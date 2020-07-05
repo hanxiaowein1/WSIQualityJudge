@@ -1,0 +1,257 @@
+
+
+double computeLaplacian(cv::Mat &img, nucSegResult &result, int count , int &lap_nums)
+{
+	double laplace = 0.0f;
+	int rows = img.rows;
+	int cols = img.cols;
+	cv::Mat grayImg;
+	cv::cvtColor(img, grayImg, COLOR_BGR2GRAY);
+	
+	for (int i = 0; i < result.contours.size(); i++)
+	{
+		//cv::Rect rect = result.rects[i];
+		//int centerX = rect.x + rect.width / 2;
+		//int centerY = rect.y + rect.height / 2;
+		vector<cv::Point> contour = result.contours[i];
+		int centerX = 0;
+		int centerY = 0;
+		for (int j = 0; j < contour.size(); j++)
+		{
+			centerX = centerX + contour[j].x;
+			centerY = centerY + contour[j].y;
+		}
+		centerX = centerX / contour.size();
+		centerY = centerY / contour.size();
+		cv::Point center(centerX, centerY);
+		//取子图
+		int top = 0, bottom = 0, left = 0, right = 0;
+		top = center.y - 30;
+		bottom = center.y + 30;
+		left = center.x - 30;
+		right = center.x + 30;
+		if (top >= 0 && left >= 0 && bottom <= 1024 && right <= 1024)
+		{
+			cv::Rect rectMat(left, top, right - left , bottom - top);
+			cv::Mat saveColorfulImg = img(rectMat).clone();
+			cv::Mat binImg;
+			float accum = myLaplacian(saveColorfulImg, binImg, 20);
+			//cv::Mat tailorImg = grayImg(rectMat);
+			//cv::imwrite("D:\\TEST_OUTPUT\\WSIQualityJudge\\laplacianGrayImage\\" + to_string(count) + "_" + to_string(i) + ".tif", tailorImg);
+			////计算tailorImg的laplace
+			//cv::Mat dst;
+			//cv::Laplacian(tailorImg, dst, CV_64F);
+			////cout << tailorImg << endl;
+			//cv::imwrite("D:\\TEST_OUTPUT\\WSIQualityJudge\\laplacianDstImg\\" + to_string(count) + "_" + to_string(i) + ".tif", dst);
+			//double *pStart = (double*)dst.datastart;
+			//double *pEnd = (double*)dst.dataend;
+			//double sum = std::accumulate(pStart, pEnd, 0.0);
+			//double mean = sum / (pEnd - pStart);
+			//double accum = 0.0;
+			//std::for_each(pStart, pEnd, [&](const double d) {
+			//	accum += (d - mean)*(d - mean);
+			//});
+			//accum = accum / (pEnd - pStart);//方差
+			//cv::imwrite("D:\\TEST_OUTPUT\\WSIQualityJudge\\laplacianSmallImage\\" + 
+			//	to_string(count) + "_" + to_string(i) + "_" + to_string(accum) + ".tif", saveColorfulImg);
+			laplace += accum;
+			++lap_nums;
+		}
+	}
+	return laplace;
+}
+
+void process(string slidePath)
+{
+	NucSegModel *NucSegModel_obj = (NucSegModel*)nucSegHandle;
+
+	string suffix = getFileNameSuffix(slidePath);
+	sdpcRead *readHandle = new sdpcRead(slidePath, suffix);
+	//得到slide的宽高
+	int sWidth = readHandle->m_publicInfo.L0_WIDTH_WITH_BORDER;
+	int sHeight = readHandle->m_publicInfo.L0_HEIGHT_WITH_BORDER;
+	int boundX = readHandle->m_publicInfo.boundX;
+	int boundY = readHandle->m_publicInfo.boundY;
+	vector<cv::Rect> rects = iniRects(sWidth, sHeight, boundX, boundY);//在全切片上裁1024*1024图像的坐标信息
+	vector<cv::Rect> rects2 = iniRects2(1024, 1024);
+	readHandle->enter_mat_upon_point(rects, "OFF");
+	rect_mat rectMat;
+	double kernelNum = 0.0;
+	double laplacian = 0.0;
+	int totalImgNum = rects.size();
+	int count = 0;
+	int lap_nums = 0;
+	while (readHandle->popMat(&rectMat))
+	{
+		//对图像进行resize
+		cout << count << ":" << totalImgNum<< " ";
+		saveCount = count;
+		cv::Mat img;
+		cv::resize(rectMat.mat, img, cv::Size(1024, 1024));
+		cv::imwrite("D:\\TEST_OUTPUT\\WSIQualityJudge\\32Image\\" + to_string(count) + ".tif", img);
+		//对图像进行裁剪
+		vector<cv::Mat> imgs;
+		for (auto iter = rects2.begin(); iter != rects2.end(); iter++)
+		{
+			imgs.emplace_back(img(*iter));
+		}
+		nucSegResult result;
+		NucSegModel_obj->nucSegModelProcess(imgs, rects2, result);
+		kernelNum += result.area.size();
+
+		//计算lapcian
+		double tempLaplacian = computeLaplacian(img, result, count , lap_nums);
+		laplacian += tempLaplacian;
+		count++;
+	}
+	//laplacian mean
+	laplacian = laplacian / lap_nums;
+	kernelNum = kernelNum / totalImgNum;
+	cout << "kernel number is:" << kernelNum << "\nlaplacian is:" << laplacian;
+}
+
+void process2(string slidePath, string origin)
+{
+	std::unique_ptr<SlideFactory> sFactory(new SlideFactory());
+	std::unique_ptr<SlideRead> sRead = sFactory->createSlideProduct((char*)slidePath.c_str());
+	//取第6层级的图像
+	int widthL6 = 0;
+	int heightL6 = 0;
+	sRead->getLevelDimensions(6, widthL6, heightL6);
+	double mpp = 0.0f;
+	sRead->getSlideMpp(mpp);
+	cv::Mat img;
+	sRead->getTile(6, 0, 0, widthL6, heightL6, img);
+	cv::Mat binImg;
+	threshold_segmentation(img, binImg, 0, thre_col_dict[origin], thre_vol);
+	vector<int> tdlr = get_rect(binImg);
+	for (auto iter = tdlr.begin(); iter != tdlr.end(); iter++)
+	{
+		*iter = *iter*(pow(2, 6));
+	}
+	int widthL0 = 0;
+	int heightL0 = 0;
+	sRead->getLevelDimensions(0, widthL0, heightL0);
+	int c_x = widthL0 / 2;
+	int c_y = heightL0 / 2;
+	int ts = c_x < c_y ? c_x : c_y;
+	int radius = block_size* (target_ratio / 0.1803f) / 2;
+	if (((tdlr[1] - tdlr[0]) > (c_y / 2) && (tdlr[1] - tdlr[0]) <= heightL0) && ((tdlr[3] - tdlr[2]) > c_x) && (tdlr[3] - tdlr[2]) <= widthL0)
+	{
+		tdlr[0] = tdlr[0] + radius;
+		tdlr[1] = tdlr[1] - radius;
+		tdlr[2] = tdlr[2] + radius;
+		tdlr[3] = tdlr[3] - radius;
+	}
+	else
+	{
+		tdlr[0] = c_y - ts + radius;
+		tdlr[1] = c_y + ts - radius;
+		tdlr[2] = c_x - ts + radius;
+		tdlr[3] = c_x + ts - radius;
+	}
+	//获得边框之后，开始获取区域的图像
+	int v_dis = tdlr[3] - tdlr[2] + 1;
+	int h_dis = tdlr[1] - tdlr[0] + 1;
+	int center_x = v_dis / 2 + tdlr[2];
+	int center_y = h_dis / 2 + tdlr[0];
+	radius = v_dis > h_dis ? h_dis / 2 : v_dis / 2;
+	vector<cv::Point> position_list;
+	double dis = radius / (double)sp;
+	for (int i = 1; i < sp; i++)
+	{
+		double cur_r = i * dis;
+		int sample_nums = out_sample_nums * i * dis / radius;
+		double ang_dis = 2 * pi / sample_nums;
+		srand((unsigned)time(NULL));
+		//double start_angle = double(((rand() % (100 - 0)) + 0) / 100.0f) * 2 * pi;
+		double start_angle = 0;
+		vector<double> angles;
+		for (int j = 0; j < sample_nums; j++)
+		{
+			double angle_element = j * ang_dis + start_angle;
+			angles.emplace_back(angle_element);
+		}
+		for (int j = 0; j < angles.size(); j++)
+		{
+			cv::Point point;
+			point.x = center_x + cur_r * cos(angles[j]);
+			point.y = center_y + cur_r * sin(angles[j]);
+			position_list.emplace_back(point);
+		}
+	}
+	cout << "position size:" << position_list.size() << endl;
+	position_list.emplace_back(cv::Point(center_x, center_y));
+	vector<cv::Mat> blocks;
+	
+	int block_size_now = ceil(block_size * (target_ratio / 0.1803f));
+	for (auto iter = position_list.begin(); iter != position_list.end(); iter++)
+	{
+		cv::Mat tmpMat;	
+		//cout << iter->x - block_size_now / 2 << " " << iter->y - block_size_now / 2 << " " << block_size_now << endl;
+		sRead->getTile(0, iter->x - block_size_now / 2, iter->y - block_size_now / 2, block_size_now, block_size_now, tmpMat);
+		cv::resize(tmpMat, tmpMat, cv::Size(block_size, block_size));
+		blocks.emplace_back(tmpMat);
+	}
+	//遍历blocks，进行预测，得到结果
+	vector<int> foreground_areas;
+	vector<cv::Rect> rects2 = iniRects2(1024, 1024);
+	NucSegModel *NucSegModel_obj = (NucSegModel*)nucSegHandle;
+	double kernelNum = 0.0;
+	double kernelArea = 0.0;
+	double laplacian = 0.0;
+	int totalImgNum = blocks.size();
+	int count = 0;
+	int lap_nums = 0;
+	for (int i = 0; i < blocks.size(); i++)
+	{
+		//保存block
+		cv::imwrite("D:\\TEST_OUTPUT\\WSIQualityJudge\\blocks\\" + to_string(i) + ".tif", blocks[i]);
+		threshold_segmentation(blocks[i], binImg, 6, thre_col_dict[origin], thre_vol);
+		post_bin_img(binImg);
+		//获得非零元素的个数（即面积）
+		unsigned char* pStart = (unsigned char*)binImg.datastart;
+		unsigned char* pEnd = (unsigned char*)binImg.dataend;
+		int area = 0;
+		for (unsigned char* start = pStart; start < pEnd; start++)
+		{
+			if (*start != 0)
+				area++;
+		}
+		foreground_areas.emplace_back(area);
+		//将图像送入模型进行运算
+		vector<cv::Mat> imgs;
+		for (auto iter = rects2.begin(); iter != rects2.end(); iter++)
+		{
+			imgs.emplace_back(blocks[i](*iter));
+		}
+		nucSegResult result;
+		NucSegModel_obj->nucSegModelProcess(imgs, rects2, result);
+		//cout << result.area.size() << " kernel_num "<<i<< endl;
+		kernelNum += result.area.size();
+		for (auto iter = result.area.begin(); iter != result.area.end(); iter++)
+		{
+			kernelArea += *iter;
+		}
+		double tempLaplacian = computeLaplacian(blocks[i], result, count , lap_nums);
+		laplacian += tempLaplacian;
+		count++;
+	}
+	laplacian = laplacian / lap_nums;
+	cout << "laplacian:" << laplacian << endl;
+	kernelNum = kernelNum / totalImgNum;
+	cout << "kernelNum:" << kernelNum << endl;
+	kernelArea = kernelArea / (totalImgNum*kernelNum);
+	cout << "kernelArea:" << kernelArea << endl;
+	double mean_fore_area = std::accumulate(foreground_areas.begin(), foreground_areas.end(), 0.0) / foreground_areas.size();
+	cout << "mear fore area :" << mean_fore_area << endl;
+	double satisfied = true;
+	if (kernelNum <= KERNEL_NUM_THRE || mean_fore_area < FORE_AREA_THRE)
+	{
+		satisfied = false;
+	}
+	if (mean_fore_area < 30000 && lap_fore < LAP_FORE_THRE || laplacian < 10)
+	{
+		satisfied = false;
+	}
+}

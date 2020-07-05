@@ -1,0 +1,93 @@
+
+
+//测试一下核分割模型的速度，batchsize设置为30
+int main()
+{ 
+	_putenv_s("CUDA_VISIBLE_DEVICES", "0");
+	string nucSegModelPath = "V:\\HanWei\\pb\\hw_asset\\seg\\segmentation_block380.pb";
+	handle myHandle = initialize_handle(nucSegModelPath.c_str());
+	//先测试一下不同batchsize下的分割模型的速度和gpu的利用率
+	NucSegModel* nucSegModel = (NucSegModel*)nucSegHandle;
+	cv::Mat img = cv::imread("D:\\TEST_DATA\\image_for_test\\12_1.tif");
+	//cv::resize(img, img, cv::Size(256, 256));
+	vector<cv::Mat> imgs;
+	//imgs.emplace_back(img);
+	for (int i = 0; i < 30; i++)
+	{
+		imgs.emplace_back(img(Rect(i, i, 256, 256)));
+	}
+	vector<Tensor> tensorOutput;
+	nucSegModel->output(imgs, tensorOutput);
+	time_t now = time(0);
+	cout << "start process " << (char*)ctime(&now) << endl;
+	//9秒
+	for (int i = 0; i < 33; i++)
+	{
+		nucSegModel->output(imgs, tensorOutput);
+	}
+	now = time(0);
+	cout << "end process" << (char*)ctime(&now) << endl;
+	system("pause");
+	return 0;
+}
+
+
+
+int main()
+{
+	_putenv_s("CUDA_VISIBLE_DEVICES", "0");
+	string nucSegModelPath = "V:\\HanWei\\pb\\hw_asset\\seg\\segmentation_block380.pb";
+	handle myHandle = initialize_handle(nucSegModelPath.c_str());
+	string slidePath = "D:\\TEST_DATA\\srp\\complete\\051300060.srp";
+	string srpPath = "D:\\TEST_DATA\\srp\\complete\\";
+	vector<string> srp;
+	getFiles(srpPath, srp, "srp");
+	for (int i = 0; i < srp.size(); i++)
+	{
+		cout << srp[i] << " is processing" << endl;
+		bool flag = slideProcess(myHandle, slidePath.c_str());
+		if (flag)
+		{
+			cout << "happy\n";
+		}
+		else {
+			cout << "sad\n";
+		}
+	}
+
+	system("pause");
+	return 0;
+
+}
+
+int main()
+{
+	_putenv_s("CUDA_VISIBLE_DEVICES", "0");
+	string nucSegModelPath = "V:\\HanWei\\pb\\hw_asset\\seg\\segmentation_block380.pb";
+	nucSegModelConf(nucSegModelPath);
+	string srpPath = "D:\\TEST_DATA\\srp\\complete\\";
+	vector<string> srp;
+	getFiles(srpPath, srp, "srp");
+	for (int i = 0; i < srp.size(); i++)
+	{
+		time_t now = time(0);
+		cout << srp[i] << " start" << (char*)ctime(&now);
+		process2(srp[i], "szsq");
+		now = time(0);
+		cout << srp[i] << " end" << (char*)ctime(&now);
+
+	}
+	//string slidePath = "Y:\\TCTDATA\\SZSQ_originaldata\\XiaoYuwei\\positive\\190422092.sdpc";
+	//process2(slidePath, "szsq");
+	
+
+	//string imgPath = "D:\\TEST_OUTPUT\\WSIQualityJudge\\laplacianSmallImage\\0_0_42.257481.tif";
+	//string imgPath = "Y:\\GXB\\a.tif";
+	//cv::Mat img = imread(imgPath);
+	//cv::Mat binImg;
+	//double value = myLaplacian(img, binImg, 20);
+	//cout << "laplacian value is:" << value << endl;
+
+	system("pause");
+	return 0;
+}
