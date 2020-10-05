@@ -57,6 +57,9 @@
     <ClCompile Include="BlurTool.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="MultiImageRead.cpp">
+      <Filter>源文件\SlideFactory</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="model.h">
@@ -94,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="BlurTool.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MultiImageRead.h">
+      <Filter>头文件\SlideFactory</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

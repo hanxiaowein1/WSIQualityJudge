@@ -22,6 +22,7 @@
 #include "modelConf.h"
 #include "SlideFactory.h"
 #include "BlurTool.h"
+#include "MultiImageRead.h"
 using namespace std;
 
 extern handle nucSegHandle;
@@ -144,15 +145,17 @@ vector<Rect> getRects(int srcImgWidth, int srcImgHeight, int dstImgWidth, int ds
 int main()
 {
 	_putenv_s("CUDA_VISIBLE_DEVICES", "0");
-	string nucSegModelPath = "X:\\HanWei\\pb\\hw_asset\\seg\\segmentation_block380.pb";
+	string nucSegModelPath = "D:\\TEST_DATA\\model\\GengXieBo\\segmentation_block380.pb";
 	handle myHandle = initialize_handle(nucSegModelPath.c_str());
 	string slidePath = "D:\\TEST_DATA\\srp\\complete\\051300060.srp";
-	string srpPath = "D:\\TEST_DATA\\srp\\broken\\";
+	string srpPath = "D:\\TEST_DATA\\srp\\complete\\";
 	vector<string> srp;
 	getFiles(srpPath, srp, "srp");
 	for (int i = 0; i < srp.size(); i++)
 	{
-		cout << srp[i] << " is processing" << endl;
+		//cout << srp[i] << " is processing" << endl;
+		time_t now = time(0);
+		cout << srp[i] << " is processing" << (char*)ctime(&now);
 		bool flag = slideProcess(myHandle, srp[i].c_str());
 		if (flag)
 		{
@@ -260,14 +263,37 @@ std::vector<double> process2(string slidePath, string origin, double c_ratio)
 	vector<cv::Mat> blocks;
 
 	int block_size_now = ceil(block_size * (target_ratio / c_ratio));
+	vector<cv::Rect> rects;
 	for (auto iter = position_list.begin(); iter != position_list.end(); iter++)
 	{
-		cv::Mat tmpMat;
-		sRead->getTile(0, iter->x - block_size_now / 2, iter->y - block_size_now / 2,
-			block_size_now, block_size_now, tmpMat);
-		cv::resize(tmpMat, tmpMat, cv::Size(block_size, block_size));
-		blocks.emplace_back(std::move(tmpMat));
+		cv::Rect rect(iter->x - block_size_now / 2, iter->y - block_size_now / 2,
+			block_size_now, block_size_now);
+		rects.emplace_back(rect);
 	}
+	MultiImageRead mImgRead(slidePath.c_str());
+	mImgRead.createThreadPool(2);
+	mImgRead.setRects(rects);
+	//std::vector<std::pair<cv::Rect, cv::Mat>> rect_mats;
+	std::vector<std::pair<cv::Rect, cv::Mat>> temp_rect_mats;
+	while (mImgRead.popQueue(temp_rect_mats))
+	{
+		for (auto iter = temp_rect_mats.begin(); iter != temp_rect_mats.end(); iter++)
+		{
+			//rect_mats.emplace_back(std::move(*iter));
+			cv::resize(iter->second, iter->second, cv::Size(block_size, block_size));
+			blocks.emplace_back(std::move(iter->second));
+		}
+		temp_rect_mats.clear();
+	}
+	
+	//for (auto iter = position_list.begin(); iter != position_list.end(); iter++)
+	//{
+	//	cv::Mat tmpMat;
+	//	sRead->getTile(0, iter->x - block_size_now / 2, iter->y - block_size_now / 2,
+	//		block_size_now, block_size_now, tmpMat);
+	//	cv::resize(tmpMat, tmpMat, cv::Size(block_size, block_size));
+	//	blocks.emplace_back(std::move(tmpMat));
+	//}
 	now = time(0);
 	cout << "end read image " << (char*)ctime(&now);
 	//遍历blocks，进行预测，得到结果

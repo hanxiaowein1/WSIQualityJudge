@@ -45,7 +45,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -125,6 +125,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="modelConf.cpp" />
+    <ClCompile Include="MultiImageRead.cpp" />
     <ClCompile Include="NucSegModel.cpp" />
     <ClCompile Include="OpenSlideRead.cpp" />
     <ClCompile Include="sdpcRead.cpp" />
@@ -138,6 +139,7 @@
     <ClInclude Include="commonFunction.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="modelConf.h" />
+    <ClInclude Include="MultiImageRead.h" />
     <ClInclude Include="NucSegModel.h" />
     <ClInclude Include="OpenSlideRead.h" />
     <ClInclude Include="sdpcRead.h" />

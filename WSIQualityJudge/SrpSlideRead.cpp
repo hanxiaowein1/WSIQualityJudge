@@ -47,15 +47,9 @@ void SrpSlideRead::iniFunction()
 		CleanAnno = (CleanAnno_function)GetProcAddress(srpDll, "CleanAnno");
 		if (CleanAnno == nullptr)
 			cout << "CleanAnno is null\n";
-		BeginBatch = (BeginBatch_function)GetProcAddress(srpDll, "BeginBatch");
-		if (BeginBatch == nullptr)
-			cout << "BeginBatch is null\n";
 		WriteAnno = (WriteAnno_function)GetProcAddress(srpDll, "WriteAnno");
 		if (WriteAnno == nullptr)
 			cout << "WriteAnno is null\n";
-		EndBatch = (EndBatch_function)GetProcAddress(srpDll, "EndBatch");
-		if (EndBatch == nullptr)
-			cout << "EndBatch is null\n";
 		Close = (Close_function)GetProcAddress(srpDll, "Close");
 		if (Close == nullptr)
 			std::cout << "Close is null\n";
@@ -109,19 +103,9 @@ void SrpSlideRead::callCleanAnno()
 	CleanAnno(m_srpHandle);
 }
 
-bool SrpSlideRead::callBeginBatch()
-{
-	return BeginBatch(m_srpHandle);
-}
-
 void SrpSlideRead::callWriteAnno(Anno* anno, int count)
 {
 	WriteAnno(m_srpHandle, anno, count);
-}
-
-bool SrpSlideRead::callEndBatch()
-{
-	return EndBatch(m_srpHandle);
 }
 
 void SrpSlideRead::callWriteParamDouble(const char* key, double value)

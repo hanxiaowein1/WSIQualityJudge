@@ -1,12 +1,13 @@
 #include "sdpcRead.h"
 
+extern void clear(std::queue<cv::Rect>& q);
 
-void clear(std::queue<cv::Rect> &q)
-{
-	std::queue<cv::Rect> empty;
-	std::swap(q, empty);
-}
-
+//void clear(std::queue<cv::Rect> &q)
+//{
+//	std::queue<cv::Rect> empty;
+//	std::swap(q, empty);
+//}
+//
 void clear(std::queue<rect_mat> &q)
 {
 	std::queue<rect_mat> empty;

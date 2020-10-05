@@ -2,9 +2,18 @@
 #ifndef _SRPREAD_H_
 #define _SRPREAD_H_
 #include "SlideRead.h"
-#include "types.h"
+//#include "types.h"
 #include <windows.h>
 #include <string>
+
+//写到srp文件里的信息
+typedef struct {
+	int id;
+	int x;
+	int y;
+	int type;
+	double score;
+}Anno;
 
 typedef uint64_t SrpCtx;
 
@@ -14,9 +23,7 @@ typedef bool(*ReadParamDouble_function)(SrpCtx ctx, const char* key, double* val
 typedef bool(*WriteParamDouble_function)(SrpCtx ctx, const char* key, double value);
 typedef bool(*ReadRegionRGB_function)(SrpCtx ctx, int level, int px, int py, int w, int h, unsigned char* buf, int* plen);
 typedef void(*CleanAnno_function)(SrpCtx ctx);
-typedef bool(*BeginBatch_function)(SrpCtx ctx);
 typedef void (*WriteAnno_function)(SrpCtx ctx, Anno* annos, int count);
-typedef bool(*EndBatch_function)(SrpCtx ctx);
 typedef void(*Close_function)(SrpCtx ctx);
 
 class SrpSlideRead : public SlideRead
@@ -30,9 +37,7 @@ private:
 	WriteParamDouble_function WriteParamDouble = nullptr;
 	ReadRegionRGB_function ReadRegionRGB = nullptr;
 	CleanAnno_function CleanAnno = nullptr;
-	BeginBatch_function BeginBatch = nullptr;
 	WriteAnno_function WriteAnno = nullptr;
-	EndBatch_function EndBatch = nullptr;
 	Close_function Close = nullptr;
 public:
 	SrpSlideRead();
@@ -59,9 +64,7 @@ public:
 	virtual void getLevelDimensions(int level, int& width, int& height);
 
 	void callCleanAnno();
-	bool callBeginBatch();
 	void callWriteAnno(Anno *anno, int count);
-	bool callEndBatch();
 	void callWriteParamDouble(const char* key, double value);
 	
 	OpenRW_function getOpenFunction() { return Open; }
@@ -70,9 +73,7 @@ public:
 	WriteParamDouble_function getWriteParamDoubleFunction() { return WriteParamDouble; }
 	ReadRegionRGB_function getReadRegionRGBFunction() { return ReadRegionRGB; }
 	CleanAnno_function getCleanAnnoFunction() { return CleanAnno; }
-	BeginBatch_function getBeginBatchFunction() { return BeginBatch; }
 	WriteAnno_function getWriteAnnoFunction() { return WriteAnno; }
-	EndBatch_function getEndBatchFunction() { return EndBatch; }
 	Close_function getCloseFunction() { return Close; }
 };
 
